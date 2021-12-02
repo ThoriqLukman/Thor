@@ -1,0 +1,963 @@
+package views;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+
+import java.awt.event.KeyEvent;
+
+import java.sql.Connection;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import javax.swing.JLabel;
+
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
+import koneksi.koneksi;
+
+public class transaksi extends javax.swing.JDialog {
+
+    public final Connection conn = new koneksi().connect();
+
+    private DefaultTableModel tabmode;
+    private DefaultTableModel tabmode2;
+    private DefaultTableModel tabmode3;
+
+    // frame maks dan geser panel
+    static boolean maximixed = true;
+    int xMouse;
+    int yMouse;
+
+    
+    
+    
+    transaksi() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+//set header table transaksi
+    private void thead(){
+    JTableHeader thead = tabelBarangMasuk.getTableHeader();
+thead.setForeground (Color.BLACK);
+thead.setBackground (Color.LIGHT_GRAY);
+thead.setFont (new Font ("Tahome", Font.BOLD, 15));
+
+TableColumn coll  = tabelBarangMasuk.getColumnModel().getColumn(0);
+ coll.setPreferredWidth (100);
+ 
+   ((DefaultTableCellRenderer)thead.getDefaultRenderer())
+                .setHorizontalAlignment(JLabel.CENTER); // center header text
+    
+}
+    //set header table tablebuah
+    private void thead1(){
+    JTableHeader thead = tabelBarang.getTableHeader();
+thead.setForeground (Color.BLACK);
+thead.setBackground (Color.LIGHT_GRAY);
+thead.setFont (new Font ("Tahome", Font.BOLD, 15));
+
+TableColumn coll  = tabelBarang.getColumnModel().getColumn(0);
+ coll.setPreferredWidth (100);
+ 
+   ((DefaultTableCellRenderer)thead.getDefaultRenderer())
+                .setHorizontalAlignment(JLabel.CENTER); // center header text
+    
+}
+    
+    
+    
+    
+    
+    
+    private void aktif() {
+        txtIdBarangMasuk.setEnabled(true);
+        txtKasir.setEnabled(true);
+        txtKodePart.setEnabled(true);
+        txtNamaPart.setEnabled(true);
+        txtJumlahBarang.setEnabled(true);
+    }
+
+    protected void kosong() {
+        txtIdBarangMasuk.setText(null);
+        txtKasir.setText(null);
+        txtKodePart.setText(null);
+        txtNamaPart.setText(null);
+        txtJumlahBarang.setText(null);
+    }
+
+    protected void kosong2() {
+        txtKodePart.setText(null);
+        txtNamaPart.setText(null);
+        txtJumlahBarang.setText(null);
+    }
+
+    public void noTable() {
+        int Baris = tabmode.getRowCount();
+        for (int a = 0; a < Baris; a++) {
+            String nomor = String.valueOf(a + 1);
+            tabmode.setValueAt(nomor + ".", a, 0);
+        }
+    }
+
+    public void tanggal() {
+        Date dt = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-dd hh:mm:ss");
+        DateTime.setText(sdf.format(dt));
+    }
+    
+    private int jumlah() {
+        String sql = "SELECT harga FROM data_buah WHERE kode_buah =" + "'" + txtKodePart.getText() + "'";   
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                String qty = txtJumlahBarang.getText();
+                int harga_jual = hasil.getInt(1);
+                int qtyy = Integer.parseInt(qty);
+                int jumlah = qtyy * harga_jual;
+                return jumlah;
+            }
+        } catch (Exception e) {
+        }
+        return 0;
+    }
+    
+    private int total() {
+        String sql = "SELECT SUM(total) AS total FROM detail_transaksi WHERE id_transaksi ="  + "'" + txtIdBarangMasuk.getText() + "'";
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                int total = hasil.getInt(1);
+                return total;
+            }
+        }catch (Exception e) {
+        }
+        return 0;
+    }
+    
+    private void updateTransaksi() {
+        String sql = "UPDATE transaksi SET total =? WHERE transaksi.no_transaksi=" + "'" +txtIdBarangMasuk.getText()+ "'";
+        try {
+            PreparedStatement stat = conn.prepareStatement(sql);
+            stat.setInt(1, total());
+            stat.executeUpdate();
+        }catch (Exception e) {
+        }
+    }
+    
+    private int kurangStock() {
+        String sql = "SELECT Stock FROM data_buah WHERE kode_buah =" + "'" + txtKodePart.getText() + "'";
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                int stokdb = hasil.getInt(1);
+                String qty = txtJumlahBarang.getText();
+                int qtyno = Integer.parseInt(qty);
+                int nilai = stokdb - qtyno;
+                return nilai;
+            }
+        }catch (Exception e) {
+        }
+        return 0;
+    }
+    
+    private void stok() {
+        String sql = "UPDATE data_buah SET Stock =? WHERE data_buah.kode_buah=" + "'" +txtKodePart.getText()+ "'";
+        try {
+            PreparedStatement stat = conn.prepareStatement(sql);
+            stat.setInt(1, kurangStock());
+            stat.executeUpdate();
+        }catch (Exception e) {
+        }
+    }
+    
+    private void tampilTotal() {
+        txtTotal.setText("Rp. " + total() + ",-");
+    }
+    
+    //Autogenerate No Transaksi
+    private void autoIdBM() {
+        try {
+            Connection con = new koneksi().connect();
+            java.sql.Statement stat = con.createStatement();
+            String sql = "select max(right (id_Transaksi,6)) as no from transaksi";
+            ResultSet res = stat.executeQuery(sql);
+            while (res.next()) {
+                if (res.first() == false) {
+                    txtIdBarangMasuk.setText("TR-000001");
+                } else {
+                    res.last();
+                    int aut_id = res.getInt(1) + 1;
+                    String no = String.valueOf(aut_id);
+                    int no_jual = no.length();
+                    // mengatur jumlah 0
+                    for (int j = 0; j < 6 - no_jual; j++) {
+                        no = "0" + no;
+                    }
+                    txtIdBarangMasuk.setText("TR-" + no);
+                    txtIdBarangMasuk.setEditable(false);
+                    DateTime.setEditable(false);
+                }
+            }
+            res.close();
+            stat.close();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Terjadi Kesalahan");
+        }
+    } 
+    
+    //Menampilkan Table Transaksi    
+    public void dataTable() {
+        Object[] Baris = {"No", "No Transaksi","Nama Barang", "Qty", "Sub Total", "Waktu", "Kasir"};
+        tabmode = new DefaultTableModel(null, Baris);
+        tabelBarangMasuk.setModel(tabmode);
+        String sql = "SELECT transaksi.id_Transaksi, "
+                + "data_buah.kode_buah, data_buah.nama_buah,  detail_transaksi.qty, detail_transaksi.total, "
+                + "transaksi.tgl_transaksi, transaksi.id_karyawan FROM transaksi JOIN detail_transaksi ON  transaksi.id_Transaksi = detail_transaksi.id_Transaksi "
+                + "JOIN data_buah ON data_buah.kode_buah = detail_transaksi.kode_buah WHERE transaksi.id_Transaksi='"+txtIdBarangMasuk.getText()+"'"+
+                "ORDER BY transaksi.id_Transaksi ASC;";
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                String no_transaksi = hasil.getString("transaksi.id_Transaksi");
+                String nama_barang = hasil.getString("data_buah.nama_buah");
+                String qty = hasil.getString("detail_transaksi.qty");
+                String sub_total = hasil.getString("detail_transaksi.total");
+                String waktu = hasil.getString("transaksi.tgl_transaksi");
+                String id_user = hasil.getString("transaksi.id_karyawan");
+                String[] data = {"", no_transaksi,nama_barang, qty, sub_total, waktu, id_user};
+                tabmode.addRow(data);
+                noTable();
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    //Menampilkan Table Data Barang
+    public void dataTable2() {
+        Object[] Baris = {"Kode Buah", "Nama Buah","Harga"};
+        tabmode2 = new DefaultTableModel(null, Baris);
+        tabelBarang.setModel(tabmode2);
+        String sql = "SELECT * FROM data_buah ORDER BY kode_buah asc";
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                String kode_part = hasil.getString("kode_buah");
+                String nama_part = hasil.getString("nama_buah");
+                String harga = hasil.getString("harga");
+                String[] data = {kode_part, nama_part,harga};
+                tabmode2.addRow(data);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    //Menampilkan Data Table Supplier
+ 
+    //Atur Lebar Table Transaksi
+    public void lebarKolom() {
+        TableColumn column;
+        tabelBarangMasuk.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        column = tabelBarangMasuk.getColumnModel().getColumn(0);
+        column.setPreferredWidth(40);
+        column = tabelBarangMasuk.getColumnModel().getColumn(1);
+        column.setPreferredWidth(200);
+        column = tabelBarangMasuk.getColumnModel().getColumn(2);
+        column.setPreferredWidth(200);
+        column = tabelBarangMasuk.getColumnModel().getColumn(3);
+        column.setPreferredWidth(100);
+        column = tabelBarangMasuk.getColumnModel().getColumn(4);
+        column.setPreferredWidth(120);
+        column = tabelBarangMasuk.getColumnModel().getColumn(5);
+        column.setPreferredWidth(250);
+        column = tabelBarangMasuk.getColumnModel().getColumn(6);
+        column.setPreferredWidth(250);
+
+    }
+
+    //Atur Lebar Table2
+    public void lebarKolom2() {
+        TableColumn column2;
+        tabelBarang.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        column2 = tabelBarang.getColumnModel().getColumn(0);
+        column2.setPreferredWidth(90);
+        column2 = tabelBarang.getColumnModel().getColumn(1);
+        column2.setPreferredWidth(170);
+        column2 = tabelBarang.getColumnModel().getColumn(2);
+        column2.setPreferredWidth(139);
+    }
+
+   
+    //Pencarian Data Barang
+    public void pencarian2(String sql) {
+        Object[] Baris2 = {"Kode Barang", "Nama Barang", "Harga Barang"};
+        tabmode2 = new DefaultTableModel(null, Baris2);
+        tabelBarang.setModel(tabmode2);
+        int brs = tabelBarang.getRowCount();
+        for (int i = 0; 1 < brs; i++) {
+            tabmode2.removeRow(1);
+        }
+        try {
+            java.sql.Statement stat = conn.createStatement();
+            ResultSet hasil = stat.executeQuery(sql);
+            while (hasil.next()) {
+                String kode_barang = hasil.getString("kode_buah");
+                String nama_barang = hasil.getString("nama_buah");
+                String harga = hasil.getString("harga");
+                String[] data = {kode_barang, nama_barang,harga};
+                tabmode2.addRow(data);
+            }
+        } catch (Exception e) {
+
+        }
+    }
+
+    //Pencarian Kasir
+  
+    public transaksi(java.awt.Frame parent, boolean modal) {
+        super(parent, modal);
+        initComponents();
+        aktif();
+        //autoIdBM();
+       // dataTable();
+        dataTable2();
+        tanggal();
+//        lebarKolom();
+     lebarKolom2();
+        thead();
+        thead1();
+        autoIdBM();
+        tanggal();
+        dataTable();
+        lebarKolom();
+      
+        txtIdBarangMasuk.requestFocus();
+        Locale local = new Locale("id","ID");
+        Locale.setDefault(local);
+    }
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        txtTotal = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        DateTime = new javax.swing.JTextField();
+        lbTanggal = new javax.swing.JLabel();
+        labelKodeBarang = new javax.swing.JLabel();
+        labelNamaBarang = new javax.swing.JLabel();
+        labelKategori = new javax.swing.JLabel();
+        txtIdBarangMasuk = new javax.swing.JTextField();
+        txtKodePart = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        tabelBarangMasuk = new javax.swing.JTable();
+        btnSimpan = new javax.swing.JButton();
+        txtJumlahBarang = new javax.swing.JTextField();
+        labelKodeBarang1 = new javax.swing.JLabel();
+        jLabel11 = new javax.swing.JLabel();
+        txtKasir = new javax.swing.JTextField();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        tabelBarang = new javax.swing.JTable();
+        txtCariBarang = new javax.swing.JTextField();
+        labelNamaBarang2 = new javax.swing.JLabel();
+        jLabel13 = new javax.swing.JLabel();
+        txtNamaPart = new javax.swing.JTextField();
+        btnTambah = new javax.swing.JButton();
+        btnBersih = new javax.swing.JButton();
+        btnClose = new javax.swing.JButton();
+        jLabel1 = new javax.swing.JLabel();
+        BG = new javax.swing.JLabel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setUndecorated(true);
+        setType(java.awt.Window.Type.POPUP);
+
+        jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel1.setMinimumSize(new java.awt.Dimension(1186, 768));
+        jPanel1.setPreferredSize(new java.awt.Dimension(1186, 768));
+        jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+
+        txtTotal.setFont(new java.awt.Font("Poppins", 1, 26)); // NOI18N
+        txtTotal.setText("Rp. 0,-");
+        jPanel1.add(txtTotal, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 700, 350, -1));
+
+        jLabel4.setFont(new java.awt.Font("Poppins", 1, 26)); // NOI18N
+        jLabel4.setText("Total");
+        jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 700, -1, -1));
+
+        DateTime.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        DateTime.setEnabled(false);
+        DateTime.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                DateTimeActionPerformed(evt);
+            }
+        });
+        jPanel1.add(DateTime, new org.netbeans.lib.awtextra.AbsoluteConstraints(197, 82, 246, 30));
+
+        lbTanggal.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        lbTanggal.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        lbTanggal.setText("Tanggal");
+        lbTanggal.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(lbTanggal, new org.netbeans.lib.awtextra.AbsoluteConstraints(34, 80, 120, 30));
+
+        labelKodeBarang.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        labelKodeBarang.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        labelKodeBarang.setText("No Transaksi");
+        labelKodeBarang.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(labelKodeBarang, new org.netbeans.lib.awtextra.AbsoluteConstraints(34, 115, 120, 30));
+
+        labelNamaBarang.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        labelNamaBarang.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        labelNamaBarang.setText("Kode Barang");
+        labelNamaBarang.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(labelNamaBarang, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 80, 120, 30));
+
+        labelKategori.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        labelKategori.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        labelKategori.setText("Qty");
+        labelKategori.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(labelKategori, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 150, 120, 30));
+
+        txtIdBarangMasuk.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtIdBarangMasuk.setEnabled(false);
+        txtIdBarangMasuk.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtIdBarangMasukActionPerformed(evt);
+            }
+        });
+        txtIdBarangMasuk.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtIdBarangMasukKeyPressed(evt);
+            }
+        });
+        jPanel1.add(txtIdBarangMasuk, new org.netbeans.lib.awtextra.AbsoluteConstraints(197, 117, 246, 30));
+
+        txtKodePart.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtKodePart.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtKodePartKeyPressed(evt);
+            }
+        });
+        jPanel1.add(txtKodePart, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 82, 246, 30));
+
+        jLabel6.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel6.setText(":");
+        jLabel6.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 80, 27, 30));
+
+        jLabel7.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel7.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel7.setText(":");
+        jLabel7.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 115, 27, 30));
+
+        jLabel8.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel8.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel8.setText(":");
+        jLabel8.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel8, new org.netbeans.lib.awtextra.AbsoluteConstraints(616, 115, 27, 30));
+
+        jLabel9.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel9.setText(":");
+        jLabel9.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel9, new org.netbeans.lib.awtextra.AbsoluteConstraints(616, 150, 27, 30));
+
+        tabelBarangMasuk.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        tabelBarangMasuk.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5"
+            }
+        ));
+        tabelBarangMasuk.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        tabelBarangMasuk.setRowHeight(30);
+        tabelBarangMasuk.setRowMargin(2);
+        jScrollPane1.setViewportView(tabelBarangMasuk);
+
+        jPanel1.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 440, 1166, 210));
+
+        btnSimpan.setBackground(new java.awt.Color(152, 135, 131));
+        btnSimpan.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        btnSimpan.setForeground(new java.awt.Color(255, 255, 255));
+        btnSimpan.setText("Simpan");
+        btnSimpan.setContentAreaFilled(false);
+        btnSimpan.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnSimpan.setOpaque(true);
+        btnSimpan.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnSimpanMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnSimpanMouseExited(evt);
+            }
+        });
+        btnSimpan.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSimpanActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnSimpan, new org.netbeans.lib.awtextra.AbsoluteConstraints(1030, 200, 120, 48));
+
+        txtJumlahBarang.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtJumlahBarang.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtJumlahBarangKeyPressed(evt);
+            }
+        });
+        jPanel1.add(txtJumlahBarang, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 152, 246, 30));
+
+        labelKodeBarang1.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        labelKodeBarang1.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        labelKodeBarang1.setText("Kasir");
+        labelKodeBarang1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(labelKodeBarang1, new org.netbeans.lib.awtextra.AbsoluteConstraints(34, 150, 120, 30));
+
+        jLabel11.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel11.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel11.setText(":");
+        jLabel11.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel11, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 150, 27, 30));
+
+        txtKasir.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtKasir.setSelectedTextColor(new java.awt.Color(152, 135, 131));
+        txtKasir.setSelectionColor(new java.awt.Color(152, 135, 131));
+        txtKasir.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtKasirActionPerformed(evt);
+            }
+        });
+        txtKasir.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtKasirKeyPressed(evt);
+            }
+        });
+        jPanel1.add(txtKasir, new org.netbeans.lib.awtextra.AbsoluteConstraints(197, 152, 246, 30));
+
+        tabelBarang.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        tabelBarang.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null},
+                {null, null},
+                {null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2"
+            }
+        ));
+        tabelBarang.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        tabelBarang.setRowHeight(30);
+        tabelBarang.setRowMargin(2);
+        jScrollPane4.setViewportView(tabelBarang);
+
+        jPanel1.add(jScrollPane4, new org.netbeans.lib.awtextra.AbsoluteConstraints(380, 270, 430, 130));
+
+        txtCariBarang.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtCariBarang.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txtCariBarangKeyTyped(evt);
+            }
+        });
+        jPanel1.add(txtCariBarang, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 230, 235, 30));
+
+        labelNamaBarang2.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        labelNamaBarang2.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        labelNamaBarang2.setText("Nama Barang");
+        labelNamaBarang2.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel1.add(labelNamaBarang2, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 115, 120, 30));
+
+        jLabel13.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel13.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel13.setText(":");
+        jLabel13.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        jPanel1.add(jLabel13, new org.netbeans.lib.awtextra.AbsoluteConstraints(616, 80, 27, 30));
+
+        txtNamaPart.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        txtNamaPart.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                txtNamaPartKeyPressed(evt);
+            }
+        });
+        jPanel1.add(txtNamaPart, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 117, 246, 30));
+
+        btnTambah.setBackground(new java.awt.Color(152, 135, 131));
+        btnTambah.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        btnTambah.setForeground(new java.awt.Color(255, 255, 255));
+        btnTambah.setText("Tambah");
+        btnTambah.setContentAreaFilled(false);
+        btnTambah.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnTambah.setOpaque(true);
+        btnTambah.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnTambahMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnTambahMouseExited(evt);
+            }
+        });
+        btnTambah.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnTambahActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnTambah, new org.netbeans.lib.awtextra.AbsoluteConstraints(1030, 130, 120, 48));
+
+        btnBersih.setBackground(new java.awt.Color(152, 135, 131));
+        btnBersih.setFont(new java.awt.Font("Poppins Medium", 0, 14)); // NOI18N
+        btnBersih.setText("Bersih");
+        btnBersih.setContentAreaFilled(false);
+        btnBersih.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnBersih.setOpaque(true);
+        btnBersih.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnBersihMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnBersihMouseExited(evt);
+            }
+        });
+        btnBersih.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnBersihActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnBersih, new org.netbeans.lib.awtextra.AbsoluteConstraints(1030, 60, 120, 48));
+
+        btnClose.setBackground(new java.awt.Color(152, 135, 131));
+        btnClose.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/icons8_Delete_30px_4.png"))); // NOI18N
+        btnClose.setContentAreaFilled(false);
+        btnClose.setOpaque(true);
+        btnClose.setSelectedIcon(new javax.swing.ImageIcon(getClass().getResource("/images/icons8_Delete_30px_5.png"))); // NOI18N
+        btnClose.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnCloseMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnCloseMouseExited(evt);
+            }
+        });
+        btnClose.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCloseActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnClose, new org.netbeans.lib.awtextra.AbsoluteConstraints(1130, 0, 54, 49));
+
+        jLabel1.setFont(new java.awt.Font("Tw Cen MT Condensed Extra Bold", 0, 48)); // NOI18N
+        jLabel1.setText("TRANSAKSI");
+        jPanel1.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(490, 20, -1, -1));
+
+        BG.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/BgMenu.png"))); // NOI18N
+        jPanel1.add(BG, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>                        
+
+    private void btnCloseMouseEntered(java.awt.event.MouseEvent evt) {                                      
+        btnClose.setBackground(Color.red);
+    }                                     
+
+    private void btnCloseMouseExited(java.awt.event.MouseEvent evt) {                                     
+        btnTambah.setBackground(new Color(152,135,131));
+    }                                    
+
+    private void btnCloseActionPerformed(java.awt.event.ActionEvent evt) {                                         
+        dispose();
+    }                                        
+
+   
+    private void btnSimpanMouseEntered(java.awt.event.MouseEvent evt) {                                       
+        btnSimpan.setBackground(new Color(172,154,149));
+        btnSimpan.setForeground(Color.white);
+    }                                      
+
+    private void btnSimpanMouseExited(java.awt.event.MouseEvent evt) {                                      
+        btnSimpan.setBackground(new Color(152,135,131));
+        btnSimpan.setForeground(Color.white);
+    }                                     
+
+    //Insert Detail Transaksi
+    private void btnSimpanActionPerformed(java.awt.event.ActionEvent evt) {                                          
+        if (txtIdBarangMasuk.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "No Transaksi tidak boleh kosong");
+            txtIdBarangMasuk.requestFocus();
+        } else if (txtKasir.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "Kasir tidak boleh kosong");
+            txtKasir.requestFocus();
+        } else {
+            String sql = "INSERT INTO detail_transaksi values (?,?,?,?)";
+            String sqll = "INSERT INTO pendapatan values (?,?,?)";
+            Date dt = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-dd hh:mm:ss");
+            String tanggal = String.valueOf(sdf.format(dt));
+            try {
+                //Insert data detail transaksi
+                PreparedStatement stat = conn.prepareStatement(sql);
+                PreparedStatement stat1 = conn.prepareStatement(sqll);
+                stat.setString(1, txtIdBarangMasuk.getText());
+                stat.setString(2, txtKodePart.getText());
+                stat.setString(4, txtJumlahBarang.getText());
+                stat.setInt(3, jumlah());
+                stat.executeUpdate();
+                stat1.setString(1, txtIdBarangMasuk.getText());
+                stat1.setString(2, DateTime.getText());
+                stat1.setInt(3,  total());
+                
+                
+                stat1.executeUpdate();
+                stok();
+                JOptionPane.showMessageDialog(null, "Data Berhasil Disimpan");
+//                kosong2();
+                dataTable();
+                lebarKolom();
+                
+                txtIdBarangMasuk.setEnabled(true);
+                txtKasir.setEnabled(true);
+                txtKodePart.requestFocus();
+                tampilTotal();
+                updateTransaksi();
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(null, "Data Gagal Disimpan" + e);
+            }
+        }
+    }                                         
+
+    private void txtIdBarangMasukKeyPressed(java.awt.event.KeyEvent evt) {                                            
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            txtKasir.requestFocus();
+        }
+    }                                           
+
+    private void txtKodePartKeyPressed(java.awt.event.KeyEvent evt) {                                       
+
+    }                                      
+
+    //Pencarian Data Barang
+    private void txtCariBarangKeyTyped(java.awt.event.KeyEvent evt) {                                       
+        String sqlPencarian2 = "SELECT * FROM data_buah WHERE kode_buah LIKE '%" 
+                + txtCariBarang.getText() + "%' or nama_buah LIKE '%" + txtCariBarang.getText() + "%'";
+        pencarian2(sqlPencarian2);
+        lebarKolom2();
+    }                                      
+    
+    private void txtNamaPartKeyPressed(java.awt.event.KeyEvent evt) {                                       
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            txtJumlahBarang.requestFocus();
+        }
+    }                                      
+
+    private void txtKasirKeyPressed(java.awt.event.KeyEvent evt) {                                    
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            txtKodePart.requestFocus();
+        }
+    }                                   
+
+    private void btnTambahMouseEntered(java.awt.event.MouseEvent evt) {                                       
+        btnTambah.setBackground(new Color(172,154,149));
+        btnTambah.setForeground(Color.white);
+    }                                      
+
+    private void btnTambahMouseExited(java.awt.event.MouseEvent evt) {                                      
+        btnTambah.setBackground(new Color(152,135,131));
+        btnTambah.setForeground(Color.white);
+    }                                     
+
+    //Tambah Detail Transaksi
+    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {                                          
+        if (txtIdBarangMasuk.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "No Transaksi tidak boleh kosong");
+            txtIdBarangMasuk.requestFocus();
+        } else if (txtKasir.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "Kasir tidak boleh kosong");
+            txtKasir.requestFocus();
+        } else if (txtKodePart.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "Kode Barang tidak boleh kosong");
+            txtKodePart.requestFocus();
+        } else if (txtNamaPart.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "Nama Barang tidak boleh kosong");
+            txtNamaPart.requestFocus();
+        } else if (txtJumlahBarang.getText().equals("")) {
+            JOptionPane.showMessageDialog(null, "Qty tidak boleh kosong");
+            txtJumlahBarang.requestFocus();
+        } else {
+            String sqll = "INSERT INTO transaksi values (?,?,?)";
+            Date dt = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-dd hh:mm:ss");
+            String tanggal = String.valueOf(sdf.format(dt)); 
+            String total = "0";
+            try {
+                //Insert data transaksi
+                PreparedStatement state = conn.prepareStatement(sqll);
+                state.setString(1, txtIdBarangMasuk.getText());
+                state.setString(2, txtKasir.getText());
+                state.setString(3, tanggal.toString());
+                
+                state.executeUpdate();
+                JOptionPane.showMessageDialog(null, "Data Berhasil Disimpan");
+                dataTable();
+                lebarKolom();
+                txtIdBarangMasuk.setEnabled(true);
+                txtKasir.setEnabled(true);
+                txtJumlahBarang.requestFocus();
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(null, "Data Gagal Disimpan" + e);
+            }
+        }
+    }                                         
+
+    //Bersihkan Form
+    private void btnBersihActionPerformed(java.awt.event.ActionEvent evt) {                                          
+        autoIdBM();
+        tanggal();
+        dataTable();
+        lebarKolom();
+        txtIdBarangMasuk.requestFocus();
+        txtKasir.setText(null);
+        txtKodePart.setText(null);
+        txtNamaPart.setText(null);
+        txtJumlahBarang.setText(null);
+        txtTotal.setText("Rp. 0,-");
+        
+    }                                         
+
+    private void btnBersihMouseExited(java.awt.event.MouseEvent evt) {                                      
+       btnBersih.setBackground(new Color(152,135,131));
+        btnBersih.setForeground(Color.white);
+    }                                     
+
+    private void btnBersihMouseEntered(java.awt.event.MouseEvent evt) {                                       
+        btnBersih.setBackground(new Color(172,154,149));
+        btnBersih.setForeground(Color.white);
+    }                                      
+
+    private void txtJumlahBarangKeyPressed(java.awt.event.KeyEvent evt) {                                           
+       if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
+            btnTambahActionPerformed(new ActionEvent(evt.getSource(), evt.getID(), "Key Press Tambah"));
+        }
+       else if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            btnSimpanActionPerformed(new ActionEvent(evt.getSource(), evt.getID(), "Key Press Tambah"));
+            txtKodePart.requestFocus();
+        }
+    }                                          
+
+    private void txtIdBarangMasukActionPerformed(java.awt.event.ActionEvent evt) {                                                 
+        // TODO add your handling code here:
+    }                                                
+
+    private void DateTimeActionPerformed(java.awt.event.ActionEvent evt) {                                         
+        // TODO add your handling code here:
+    }                                        
+
+    private void txtKasirActionPerformed(java.awt.event.ActionEvent evt) {                                         
+        // TODO add your handling code here:
+    }                                        
+
+    public static void main(String args[]) {
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(transaksi.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(transaksi.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(transaksi.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(transaksi.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        /* Create and display the dialog */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                transaksi dialog = new transaksi(new javax.swing.JFrame(), true);
+                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        System.exit(0);
+                        
+                    }
+                });
+                dialog.setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify                     
+    private javax.swing.JLabel BG;
+    private javax.swing.JTextField DateTime;
+    private javax.swing.JButton btnBersih;
+    private javax.swing.JButton btnClose;
+    private javax.swing.JButton btnSimpan;
+    private javax.swing.JButton btnTambah;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane4;
+    private javax.swing.JLabel labelKategori;
+    private javax.swing.JLabel labelKodeBarang;
+    private javax.swing.JLabel labelKodeBarang1;
+    private javax.swing.JLabel labelNamaBarang;
+    private javax.swing.JLabel labelNamaBarang2;
+    private javax.swing.JLabel lbTanggal;
+    private javax.swing.JTable tabelBarang;
+    private javax.swing.JTable tabelBarangMasuk;
+    private javax.swing.JTextField txtCariBarang;
+    private javax.swing.JTextField txtIdBarangMasuk;
+    private javax.swing.JTextField txtJumlahBarang;
+    private javax.swing.JTextField txtKasir;
+    private javax.swing.JTextField txtKodePart;
+    private javax.swing.JTextField txtNamaPart;
+    private javax.swing.JLabel txtTotal;
+    // End of variables declaration                   
+}
